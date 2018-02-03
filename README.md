@@ -36,11 +36,11 @@ $ ( rm -f /tmp/foo.zip && cd action && zip -qr /tmp/foo.zip * )
 
 To deploy the feed action, create an OpenWhisk package to host the action.  This facilitates sharing the feed action between OpenWhisk namespaces and centralizes its configuration.  Then create the action in the package namespace from the zip file.  Substitute the appropriate values from the running docker AMQP feed image for the FEED_HOST and FEED_PORT slots in the next commands.
 
-'''
+```
 $ wsk package create -p provider_endpoint http://<FEED_HOST>:<FEED_PORT>/amqp amqp
 $ wsk action create amqp/amqpfd -a feed true --kind nodejs:6 /tmp/foo.zip
+```
 
-'''
 
 ## Usage
 
