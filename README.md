@@ -49,7 +49,7 @@ Create your own custom action, trigger and rule.
 ```js
 // msglog.js
 function main(params) {
-    console.log(params.body);
+    console.log('inbound message with body', params.body);
     return {payload: ''};
 }
 ```
