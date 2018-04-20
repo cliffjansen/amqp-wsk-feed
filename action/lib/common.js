@@ -1,24 +1,3 @@
-/*
- *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- *
- */
-
 const request = require('request');
 
 function requestHelper(url, input, method) {
@@ -38,7 +17,6 @@ function requestHelper(url, input, method) {
             options.body = input;
         }
 
-
         request(options, function(error, response, body) {
 
             if (!error && response.statusCode === 200) {
@@ -46,34 +24,56 @@ function requestHelper(url, input, method) {
             }
             else {
                 if (response) {
-                    console.log('amqp feed: Error invoking whisk action:', response.statusCode, body);
+                    console.log('AMQP feed: Error invoking whisk action:', response.statusCode, body);
                     reject(body);
                 }
                 else {
-                    console.log('amqp feed: Error invoking whisk action:', error);
+                    console.log('AMQP feed: Error invoking whisk action:', error);
                     reject(error);
                 }
             }
         });
-  });
+    });
 }
 
 function createWebParams(rawParams) {
     var namespace = process.env.__OW_NAMESPACE;
-    var name = parseQName(rawParams.triggerName).name;
-    var triggerName = '/' + namespace + '/' + name;
+    var triggerName = '/' + namespace + '/' + parseQName(rawParams.triggerName).name;
 
     var webparams = Object.assign({}, rawParams);
     delete webparams.lifecycleEvent;
-    delete webparams.provider_endpoint;
+    delete webparams.apihost;
 
     webparams.triggerName = triggerName;
-    webparams.name = name;
-    webparams.namespace = namespace;
-    // Next line works based on how apikey is used later in the feed.
-    // But why property name change?  Historical?
-    webparams.apikey = webparams.authKey;
+
     return webparams;
+}
+
+function verifyTriggerAuth(triggerURL, authKey, isDelete) {
+    var auth = authKey.split(':');
+
+    return new Promise(function(resolve, reject) {
+
+        request({
+            method: 'get',
+            url: triggerURL,
+            auth: {
+                user: auth[0],
+                pass: auth[1]
+            },
+            rejectUnauthorized: false
+        }, function(err, response) {
+            if (err) {
+                reject(sendError(400, 'Trigger authentication request failed.', err.message));
+            }
+            else if(response.statusCode >= 400 && !(isDelete && response.statusCode === 404)) {
+                reject(sendError(response.statusCode, 'Trigger authentication request failed.'));
+            }
+            else {
+                resolve();
+            }
+        });
+    });
 }
 
 function parseQName(qname) {
@@ -104,10 +104,26 @@ function sendError(statusCode, error, message) {
     };
 }
 
+function constructPayload(payload) {
+
+    var updatedPayload;
+    if (payload) {
+        if (typeof payload === 'string') {
+            updatedPayload = {payload: payload};
+        }
+        if (typeof payload === 'object') {
+            updatedPayload = payload;
+        }
+    }
+    return updatedPayload;
+}
+
 
 module.exports = {
     'requestHelper': requestHelper,
     'createWebParams': createWebParams,
+    'verifyTriggerAuth': verifyTriggerAuth,
     'parseQName': parseQName,
-    'sendError': sendError
+    'sendError': sendError,
+    'constructPayload': constructPayload
 };

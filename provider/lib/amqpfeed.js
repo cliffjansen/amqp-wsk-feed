@@ -21,29 +21,27 @@
 
 'use strict';
 
-class AmqpFeed {
-    constructor(amqpContainer, logger0) {
-        this.container = amqpContainer;
-        this.logger = logger0;
-        this.connections = new Map();
-        this.triggers = new Map();
-    }
+module.exports = function(amqpContainer, logger) {
+    this.container = amqpContainer;
+    this.logger = logger;
+    this.connections = new Map();
+    this.triggers = new Map();  // TODO: reuse utils.triggers... which is not a map
 
-    connectionID(triggerHandle, key) {
+    this.connectionID = function(triggerHandle, key) {
         // for logger
         const wskUser = triggerHandle.apikey.split(':')[0];
-        const opts = triggerHandle.rhea_options;
+        const opts = triggerHandle.connection;
         const host = opts.host || 'localhost';
         const port = opts.port || 'default';
         var id = triggerHandle.namespace + ':' + wskUser + ':' + host + ':' + port;
         if (triggerHandle.feed_tag) { id += '-' + triggerHandle.feed_tag; }
         // TODO: add some minor distinguishing hash of the full key.  Perfect uniqueness not a requirement.
         return id;
-    }
+    };
 
-    makeKey(triggerHandle) {
+    this.makeKey = function(triggerHandle) {
         // To identify shareable connections: same owner/auth, same connection properties
-        const opts = triggerHandle.rhea_options;
+        const opts = triggerHandle.connection;
         const host = opts.host || 'localhost';        
         var key = triggerHandle.namespace + ':' + triggerHandle.apikey + '-';
         if (triggerHandle.feed_tag) { key += '<' + triggerHandle.feed_tag + '>'; }
@@ -65,19 +63,22 @@ class AmqpFeed {
             });
         }
         return key;
-    }
+    };
 
-    getConnection(triggerHandle) {
+    this.getConnection = function(triggerHandle) {
+        var method = 'getConnection';
         const key = this.makeKey(triggerHandle);
         if (!this.connections.has(key)) {
             this.connect(triggerHandle, key);
         }
 
         return this.connections.get(key);
-    }
+    };
 
-    connect(triggerHandle, key) {
-        const conn = this.container.connect(triggerHandle.rhea_options);
+    this.connect = function(triggerHandle, key) {
+        var method = 'connect';
+        const conn = this.container.connect(triggerHandle.connection);
+        conn.feedConnectCount = 0;
         conn.feedConnectionKey = key;
         conn.feedConnectionID = this.connectionID(triggerHandle, key);
         this.connections.set(key, conn);
@@ -86,6 +87,23 @@ class AmqpFeed {
         events.forEach(event => {
             conn.on(event, (context) => {
                 this.logger.info('AmqpFeed.connect', event, context.connection.feedConnectionID);
+                if (event == 'connection_open') {
+                    context.connection.feedConnectCount++;
+                }
+                else if (event == 'connection_close') {
+                    this.onConnectionClose(context);
+                }
+                else if (event == 'disconnected') {
+                    var conn = context.connection;
+                    if (!conn.feedConnectCount) {
+                        conn.close();  // Only reconnect if we ever succeeded.  Make configurable?
+                        if (conn.hasOwnProperty('feedSocketError') || conn.get_error()) {
+                            this.failedConnect(conn);
+                        } else {
+                            process.nextTick(this.failedConnect.bind(this, conn));  // Might see socket error by then
+                        }
+                    }
+                }
             });
         });
 
@@ -99,73 +117,151 @@ class AmqpFeed {
         conn.on('message', (context) => {
             this.onMessage(context);
         })
-    }
 
-    onMessage(context) {
-        const message = context.message;
-        const rcv = context.receiver;
-        const delivery = context.delivery;;
-        const feed = this;
-        if ('feedTriggerID' in rcv) {
-            const trig = feed.triggers.get(rcv.feedTriggerID);
-            trig.onMessageCallback(rcv.feedTriggerID, trig, context).then( (message) => {
-                delivery.accept();
-            })
-            .catch( (message, err) => {
-                delivery.reject({condition:'amqpfeed:openwhisk:triggerfailure',description:err});
-                feed.deleteReceiver(rcv.feedTriggerID);
-            });
+        conn.socket.on('error', this.onConnectionError.bind(conn));
+    };
+
+    this.onMessage = function(context) {
+        var method = 'onMessage';
+        var message = context.message;
+        var rcv = context.receiver;
+        var triggerIdentifier = rcv.feedTriggerID;
+        var delivery = context.delivery;;
+        var feed = this;
+        if (rcv.feedLinkClosing) {
+            // Normal occurence in async protocol
+            this.logger.info(method, 'message rejected (async close)', triggerIdentifier);
+            delivery.reject({condition:'amqpfeed:openwhisk:triggerclosed',description:'async close in progress'});
+            return;
+        }
+        if (feed.triggers.has(triggerIdentifier)) {
+            var trigger = feed.triggers.get(rcv.feedTriggerID);
+            trigger.payload = {type: 'message', body: message.body};
+            trigger.amqpDelivery = context.delivery;  // utils code does eventual accept/reject
+            trigger.fireCallback();
+            trigger.amqpDelivery = null;
         }
         else {
+            this.logger.info(method, 'internal trigger state error', triggerIdentifier);
             delivery.reject({condition:'amqpfeed:openwhisk:triggercanceled',description:'No OpenWhisk consumer'});
         }
-    }
+    };
 
-    onReceiverOpen(context) {
-        const rcv = context.receiver;
+    this.onReceiverOpen = function(context) {
+        var method = 'onReceiverOpen';
+        var rcv = context.receiver;
 
-        if (rcv.hasOwnProperty('feedCreationPromise')) {
-            rcv.feedCreationPromise.resolve();
-            delete rcv.feedCreationPromise;
+        if (!rcv.feedLinkError) {
+            rcv.feedLinkOpened = true;
         }
-        else { this.logger.error('onReceiverOpen', 'No handler for receiver'); }
-    }
+    };
       
-    onReceiverError(context) {
-        console.log('receiver error:TODO');
+    this.onReceiverError = function(context) {
+        var rcv = context.receiver;
+        this.doReceiverError(rcv, rcv.remote.detach.error);
     }
 
-    createReceiver(triggerIdentifier, triggerHandle, callback) {
+    this.doReceiverError = function(rcv, errmsg) {
+        var method = 'doReceiveError';
+        if (rcv.feedLinkClosing) {
+            return;
+        }
+
+        if (!this.triggers.has(rcv.feedTriggerID)) {
+            this.logger.error(method, 'untracked link', rcv.feedTriggerID);
+            return;
+        }
+
+        var trigger = this.triggers.get(rcv.feedTriggerID);
+        trigger.payload = {type: 'feed_error', error: errmsg};
+        trigger.fireCallback();
+
+        this.providerUtils.disableTrigger(trigger.triggerID, undefined, errmsg);
+    };
+
+    this.onConnectionError = function(err) {
+        var conn = this;  // via bind
+        if (!conn.hasOwnProperty('feedSocketError')) {
+            conn.feedSocketError = err;
+        }
+    }
+
+    this.failedConnect = function(conn) {
+        var method = 'failedConnect';
+        var err;
+        console.log('in failed connect');
+        if (conn.hasOwnProperty('feedSocketError')) {
+            err = conn.feedSocketError;
+        } else {
+            err = conn.get_error() || 'unknown error';
+        }
+        this.logger.info(method, 'disconnected', err.message);
+        
+        conn.each_link( (recv) => {
+            this.doReceiverError(recv, 'disconnected: ' + err);
+        });
+    }
+
+    this.onConnectionClose = function(context) {
+        var method = 'onConnectionClose';
+        var conn = context.connection;
+        if (!conn.feedConnectionCount || !conn.local.close) {
+            var err = context.connection.get_error();
+            this.logger.info(method, 'Connection disconnected', err);
+            // TODO: for each receiver send conn close event + error to trigger
+            // + disable?
+        }
+    };
+
+    this.createFeed = function(newTrigger, callback) {
+
+        // newTrigger is the couchdb change doc.  
+        var cachedTrigger = {
+            apikey: newTrigger.apikey,
+            name: newTrigger.name,
+            namespace: newTrigger.namespace,
+            triggerID: newTrigger.triggerID,
+            uri: newTrigger.uri,
+            maxTriggers: newTrigger.maxTriggers,
+            monitor: newTrigger.monitor,
+            address: newTrigger.address,
+            connection: newTrigger.connection
+        };
+
+        var method = 'createFeed';
+        var triggerIdentifier = newTrigger.triggerID;
         if (this.triggers.has(triggerIdentifier)) {
             this.deleteReceiver(triggerIdentifier);
         }
-        triggerHandle.onMessageCallback = callback;
-        const address = triggerHandle.address;
+        cachedTrigger.fireCallback = callback;
+        const address = cachedTrigger.address;
         const onOpen = this.onReceiverOpen;
         const onError = this.onReceiverError;
         const feed = this;
 
-        return new Promise(function(resolve, reject) {
-            try {
-                const connection = feed.getConnection(triggerHandle);
-                const receiver = connection.open_receiver(address);
-                // receiver and trigger are 1-1
-                feed.triggers.set(triggerIdentifier, triggerHandle);
-                receiver.feedTriggerID = triggerIdentifier;
-                triggerHandle.feedReceiver = receiver;
-                // resolve/reject on future AMQP event
-                receiver.feedCreationPromise = {resolve: resolve, reject: reject};
-                receiver.on('receiver_open', onOpen);
-                receiver.on('receiver_error', onError);
-            }
-            catch (e) {
-                feed.logger.error(method, 'Exception in createTrigger', triggerIdentifier, e);
-                reject(e);
-            }
-        });
-    }
+        try {
+            cachedTrigger.payload = null;
+            cachedTrigger.amqpDelivery = null;
+            const connection = feed.getConnection(cachedTrigger);
+            const receiver = connection.open_receiver(address);
+            // receiver and trigger are 1-1
+            feed.triggers.set(triggerIdentifier, cachedTrigger);
+            receiver.feedTriggerID = triggerIdentifier;
+            cachedTrigger.feedReceiver = receiver;
+            receiver.on('receiver_open', onOpen);
+            receiver.on('receiver_error', onError);
+            receiver.feedLinkError = false;
+            receiver.feedLinkOpened = false;
+            receiver.feedLinkClosing = false;
+        }
+        catch (e) {
+            feed.logger.error(method, 'Exception in createTrigger', triggerIdentifier, e);
+            return Promise.reject(e);
+        }
+        return Promise.resolve(cachedTrigger);
+    };
 
-    maybeClose(connection) {
+    this.maybeClose = function(connection) {
         if (this.connections.get(connection.feedConnectionKey) === connection) {
             if (connection.find_receiver( (recv) => { return ('feedTriggerID' in recv); }) ) {
                 return;  // at least one valid trigger remains
@@ -174,10 +270,10 @@ class AmqpFeed {
             this.connections.delete(connection.feedConnectionKey);
             this.logger.info('closed connection', connection.feedConnectionKey);
         }
-    }
+    };
                 
 
-    deleteReceiver(triggerIdentifier) {
+    this.deleteReceiver = function(triggerIdentifier) {
         var method = 'deleteReceiver';
         // called by createTrigger, so state must be clean on return regardless 
         // of future events or promise fulfillment
@@ -186,13 +282,13 @@ class AmqpFeed {
             this.triggers.delete(triggerIdentifier);
             const conn = trig.feedReceiver.connection;
             trig.feedReceiver.close();
+            trig.feedReceiver.feedLinkClosing = true;  // reject async inbound messages
             delete trig.feedReceiver.feedTriggerID;
             delete trig.feedReceiver;
             this.logger.info(method, 'Deleted', triggerIdentifier);
             this.maybeClose(conn);  // do this after feedTriggerID has been removed
         }
         else { this.logger.info(method, 'delete ignored (duplicate)', triggerIdentifier); }
-    }
-}
+    };
 
-module.exports = AmqpFeed
+};
