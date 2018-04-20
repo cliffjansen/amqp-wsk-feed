@@ -24,17 +24,17 @@ As you build and deploy you will need to choose a hostname and port for the runn
 
 ```sh
 $ cd provider
-$ oc new-build --binary --name=amqp-feed -l app=amqp-feed
-$ npm install; oc start-build amqp-feed --from-dir=. --follow
-$ oc new-app amqp-feed -l app=amqp-feed
-$ oc expose service amqp-feed
+$ oc new-build --binary --name=amqp-wsk-feed -l app=amqp-wsk-feed
+$ npm install; oc start-build amqp-wsk-feed --from-dir=. --follow
+$ oc new-app amqp-wsk-feed -l app=amqp-wsk-feed
+$ oc expose service amqp-wsk-feed
 ```
 
 ##### Enable Liveliness Readiness Probe
 
 ```sh
-$ oc set probe dc/amqp-feed --readiness --get-url=http://:8080/health --timeout-seconds=3 --initial-delay-seconds=5
-$ oc set probe dc/amqp-feed --liveness  --get-url=http://:8080/health --timeout-seconds=3 --initial-delay-seconds=5
+$ oc set probe dc/amqp-wsk-feed --readiness --get-url=http://:8080/health --timeout-seconds=3 --initial-delay-seconds=5
+$ oc set probe dc/amqp-wsk-feed --liveness  --get-url=http://:8080/health --timeout-seconds=3 --initial-delay-seconds=5
 ```
 
 ##### Set Environment Variables
@@ -43,7 +43,7 @@ The Feed Provider needs to know the `OpenWhisk API Host` to perform the triggers
 
 ```sh
 API_HOST=$(oc get route/openwhisk --template="{{.spec.host}}" --namespace openwhisk)
-oc set env dc/amqp-feed ROUTER_HOST="${API_HOST}"
+oc set env dc/amqp-wsk-feed ROUTER_HOST="${API_HOST}"
 ```
 
 NOTE: 
@@ -63,7 +63,7 @@ $ ( rm -f /tmp/foo.zip && zip -qr /tmp/foo.zip * )
 To deploy the feed action, create an OpenWhisk package to host the action.  This facilitates sharing the feed action between OpenWhisk namespaces and centralizes its configuration.  Then create the action in the package namespace from the zip file.  Substitute the appropriate values from the running docker AMQP feed image for the FEED_HOST and FEED_PORT slots in the next commands.
 
 ```
-$ FEED_URL=$(oc get route/amqp-feed --template="{{.spec.host}}" --namespace myproject)
+$ FEED_URL=$(oc get route/amqp-wsk-feed --template="{{.spec.host}}" --namespace myproject)
 $ wsk -i package create -p provider_endpoint http://$FEED_URL/amqp amqp
 $ wsk -i action create amqp/amqpfd -a feed true --kind nodejs:6 /tmp/foo.zip
 ```
