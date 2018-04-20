@@ -40,7 +40,7 @@ var constants = require('./lib/constants.js');
 var app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.set('port', process.env.PORT || 3001);
+app.set('port', process.env.PORT || 8080);
 
 // Allow invoking servers with self-signed certificates.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -48,7 +48,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // Create the Provider Server
 var server = http.createServer(app);
-server.listen(app.get('port'), function() {
+server.listen(app.get('port'), function () {
     logger.info('server.listen', 'Express server listening on port ' + app.get('port'));
 });
 
@@ -81,12 +81,12 @@ function init(server) {
         // Health Endpoint
         app.get(providerHealth.endPoint, providerUtils.authorize, providerHealth.health);
 
-// TODO        providerUtils.initAllTriggers();
+        // TODO        providerUtils.initAllTriggers();
 
         app.post('/amqp', providerUtils.createTrigger);
         app.delete('/amqp', providerUtils.deleteTrigger);
     }
-    catch(err) {
+    catch (err) {
         console.error(err);
         logger.error(method, 'initialization error:', err);
     }
