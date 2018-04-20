@@ -1,12 +1,9 @@
-// ZZZ var CronJob = require('cron').CronJob;
 var moment = require('moment');
 
 const common = require('./lib/common');
 const Database = require('./lib/Database');
 
 function main(params) {
-
-    console.log('ZZZ foo dbg', params);
     if (!params.authKey) {
         return common.sendError(400, 'no authKey parameter was provided');
     }
@@ -49,7 +46,7 @@ function main(params) {
         newTrigger.address = params.address;
         newTrigger.connection = params.connection;
         newTrigger.credit = credit;
-        newTrigger.maxTriggers = -1;  // ZZZ deprecated, remove after fixing use in trigger views/filters
+        newTrigger.maxTriggers = -1;  // TODO: deprecated, remove after fixing use in trigger views/filters
 
         return new Promise(function (resolve, reject) {
             common.verifyTriggerAuth(triggerURL, params.authKey, false)

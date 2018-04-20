@@ -5,14 +5,11 @@ module.exports = function(dbURL, dbName) {
     var nano = require('nano')(dbURL);
     this.db = nano.db.use(dbName);
     var utilsDB = this;
-    console.log('ZZZ DB setup ', dbURL, dbName);
 
     this.getWorkerID = function(availabeWorkers) {
 
         return new Promise((resolve, reject) => {
             var workerID = availabeWorkers[0] || 'worker0';
-
-    console.log('ZZZ DB maybe view ', availabeWorkers.length);
 
             if (availabeWorkers.length > 1) {
                 utilsDB.db.view('triggerViews', 'triggers_by_worker', {reduce: true, group: true}, function (err, body) {
@@ -51,15 +48,11 @@ module.exports = function(dbURL, dbName) {
 
         return new Promise(function(resolve, reject) {
 
-    console.log('ZZZ DB insert trigger ', newTrigger, triggerID);
-
             utilsDB.db.insert(newTrigger, triggerID, function (err) {
                 if (!err) {
-    console.log('ZZZ DB insert trigger wins ');
                     resolve();
                 }
                 else {
-    console.log('ZZZ DB insert trigger fails ');
                     reject(common.sendError(err.statusCode, 'error creating AMQP trigger.', err.message));
                 }
             });
@@ -72,7 +65,6 @@ module.exports = function(dbURL, dbName) {
 
             var qName = triggerID.split('/');
             var id = retry ? triggerID : qName[0] + '/_/' + qName[2];
-    console.log('ZZZ DB get ', triggerID, id);
             utilsDB.db.get(id, function (err, existing) {
                 if (err) {
                     if (retry) {
@@ -88,7 +80,6 @@ module.exports = function(dbURL, dbName) {
                         reject(common.sendError(err.statusCode, 'could not find trigger ' + name + ' in the database'));
                     }
                 } else {
-    console.log('ZZZ DB get found', existing);
                     resolve(existing);
                 }
             });
@@ -114,14 +105,12 @@ module.exports = function(dbURL, dbName) {
 
         return new Promise(function(resolve, reject) {
 
-    console.log('ZZZ DB insert disable ', triggerID);
             utilsDB.db.insert(trigger, triggerID, function (err) {
                 if (err) {
                     if (err.statusCode === 409 && retryCount < 5) {
                         setTimeout(function () {
                             utilsDB.disableTrigger(triggerID, trigger, (retryCount + 1))
                             .then(id => {
-    console.log('ZZZ DB insert resolve on retry ', triggerID);
                                 resolve(id);
                             })
                             .catch(err => {
@@ -134,7 +123,6 @@ module.exports = function(dbURL, dbName) {
                     }
                 }
                 else {
-    console.log('ZZZ DB insert disable wins ', triggerID);
                     resolve(triggerID);
                 }
             });
@@ -146,10 +134,8 @@ module.exports = function(dbURL, dbName) {
 
         return new Promise(function(resolve, reject) {
 
-    console.log('ZZZ DB get delete ', triggerID);
             utilsDB.db.get(triggerID, function (err, existing) {
                 if (!err) {
-    console.log('ZZZ DB destroy on delete ', triggerID);
                     utilsDB.db.destroy(existing._id, existing._rev, function (err) {
                         if (err) {
                             if (err.statusCode === 409 && retryCount < 5) {
@@ -193,14 +179,12 @@ module.exports = function(dbURL, dbName) {
         }
 
         return new Promise(function(resolve, reject) {
-    console.log('ZZZ DB insert on update ', triggerID);
             utilsDB.db.insert(trigger, triggerID, function (err) {
                 if (err) {
                     if (err.statusCode === 409 && retryCount < 5) {
                         setTimeout(function () {
                             utilsDB.updateTrigger(triggerID, trigger, params, (retryCount + 1))
                             .then(id => {
-    console.log('ZZZ DB insert on update wins2 ', triggerID);
                                 resolve(id);
                             })
                             .catch(err => {
@@ -213,7 +197,6 @@ module.exports = function(dbURL, dbName) {
                     }
                 }
                 else {
-    console.log('ZZZ DB insert on update wins ', triggerID);
                     resolve(triggerID);
                 }
             });
