@@ -2,5 +2,8 @@
   "name": "amqp-feed-action",
   "version": "0.0.2",
   "description": "Required feed action that accompanies the AMQP provider service",
-  "main": "amqp.js"
+  "main": "amqp.js",
+  "dependencies": {
+    "request": "^2.85.0"
+  }
 }
