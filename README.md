@@ -10,9 +10,9 @@ This package has two parts: the AMQP connection feed and two associated feed act
 
 It should be noted that a [connection feed](https://github.com/openwhisk/openwhisk/blob/master/docs/feeds.md#implementing-feeds-via-connections) is different from other OpenWhisk feed types in that it runs continuously and is often hosted outside the OpenWhisk runtime.  The OpenWhisk documentation will often refer to a connection feed as a "provider service".  Consequently you will often find the terms "feed" and "provider" used interchangeably in this project's source code to refer to the AMQP feed provider.
 
-Currently, this package has only been tested within an OpenWhisk instance running in an OpenShift.  However, with slight modification it should be able to deploy the AMQP connection feed to Kubernetes or to any arbitrary docker runtime.
+Currently, this package has only been tested within an OpenWhisk instance running in an OpenShift.  In the case that you have installed OpenWhisk using https://github.com/projectodd/openwhisk-openshift, you can run a (non-scaling) version of the feed provider by executing the script: deploy/ocWhiskSystem.sh.
 
-Deployment is not yet automated.  Installing by hand requires obtaining the necessary OpenWhisk secrets required by the [Alarms package installer](https://github.com/apache/incubator-openwhisk-package-alarms/blob/master/installCatalog.sh) and running the commands while changing the named "alarm" references for corresponding 'amqp' named entities.
+With slight modification it should be able to deploy the AMQP connection feed to Kubernetes or to any arbitrary docker runtime.  Installing by hand requires obtaining the necessary OpenWhisk secrets required by the [Alarms package installer](https://github.com/apache/incubator-openwhisk-package-alarms/blob/master/installCatalog.sh) and running the commands while changing the named "alarm" references for corresponding 'amqp' named entities.
 
 ### Deploy the AMQP connection feed on OpenShift
 

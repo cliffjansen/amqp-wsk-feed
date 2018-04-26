@@ -22,4 +22,4 @@ ADD provider/. /amqpTrigger/
 
 EXPOSE 8080
 
-CMD ["/bin/bash", "-c", "node /amqpTrigger/app.js >> /logs/amqpTrigger_logs.log 2>&1"]
+CMD ["/bin/bash", "-c", "[ -d /logs ] && exec >>/logs/amqpTrigger_logs.log 2>&1 ; node /amqpTrigger/app.js "]
