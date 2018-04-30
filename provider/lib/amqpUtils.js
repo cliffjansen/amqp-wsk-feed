@@ -30,7 +30,7 @@ module.exports = function(amqpContainer, logger) {
     this.connectionID = function(triggerHandle, key) {
         // for logger
         const wskUser = triggerHandle.apikey.split(':')[0];
-        const opts = triggerHandle.connection;
+        const opts = triggerHandle.connection_options;
         const host = opts.host || 'localhost';
         const port = opts.port || 'default';
         var id = triggerHandle.namespace + ':' + wskUser + ':' + host + ':' + port;
@@ -41,7 +41,7 @@ module.exports = function(amqpContainer, logger) {
 
     this.makeKey = function(triggerHandle) {
         // To identify shareable connections: same owner/auth, same connection properties
-        const opts = triggerHandle.connection;
+        const opts = triggerHandle.connection_options;
         const host = opts.host || 'localhost';        
         var key = triggerHandle.namespace + ':' + triggerHandle.apikey + '-';
         if (triggerHandle.feed_tag) { key += '<' + triggerHandle.feed_tag + '>'; }
@@ -77,7 +77,7 @@ module.exports = function(amqpContainer, logger) {
 
     this.connect = function(triggerHandle, key) {
         var method = 'connect';
-        const conn = this.container.connect(triggerHandle.connection);
+        const conn = this.container.connect(triggerHandle.connection_options);
         conn.feedConnectCount = 0;
         conn.feedConnectionKey = key;
         conn.feedConnectionID = this.connectionID(triggerHandle, key);
@@ -225,7 +225,7 @@ module.exports = function(amqpContainer, logger) {
             maxTriggers: newTrigger.maxTriggers,
             monitor: newTrigger.monitor,
             address: newTrigger.address,
-            connection: newTrigger.connection
+            connection_options: newTrigger.connection_options
         };
 
         var method = 'createFeed';

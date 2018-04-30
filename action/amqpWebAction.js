@@ -36,15 +36,15 @@ function main(params) {
         if (!params.address) {
             return common.sendError(400, 'AMQP address parameter missing');
         }
-        if (!params.connection) {
-            return common.sendError(400, 'AMQP connection parameter missing');
+        if (!params.connection_options) {
+            return common.sendError(400, 'AMQP connection_options parameter missing');
         }
         if (params.credit) {
             credit = params.credit;
         }
 
         newTrigger.address = params.address;
-        newTrigger.connection = params.connection;
+        newTrigger.connection_options = params.connection_options;
         newTrigger.credit = credit;
         newTrigger.maxTriggers = -1;  // TODO: deprecated, remove after fixing use in trigger views/filters
 
@@ -127,8 +127,8 @@ function main(params) {
                 if (params.address) {
                     return reject(common.sendError(400, 'AMQP address cannot be changed on update.'));
                 }
-                if (params.connection) {
-                    return reject(common.sendError(400, 'AMQP connection parameters cannot be changed on update.'));
+                if (params.connection_options) {
+                    return reject(common.sendError(400, 'AMQP connection_options cannot be changed on update.'));
                 }
                 if (Object.keys(updatedParams).length === 0) {
                     return reject(common.sendError(400, 'no updatable parameters were specified'));

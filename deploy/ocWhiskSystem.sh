@@ -11,7 +11,8 @@
 [ -f provider/lib/amqpUtils.js ] || { echo wrong working dir >&2 ; exit 1 ; }
 type wsk >/dev/null || exit 1
 type oc >/dev/null || exit 1
-NAMESPACE=openshift
+NAMESPACE=$(oc get deployment alarmprovider --template="{{.metadata.namespace}}")
+[ X = X"$NAMESPACE" ] && { echo cannot determine Alarm provider namespace ; exit 1 ; }
 
 # get environment vars from the Alarm provider
 ALARMS_ID=`docker ps | grep alarmprovider | grep -v POD | sed 1q | awk '{print $1;}'`
@@ -25,7 +26,7 @@ docker exec -i $ALARMS_ID bash -c 'env | egrep "^DB_HOST|^DB_PROTOCOL=|^DB_USERN
 [ `wc -l <$ENV_FILE` -eq 4 ] || { echo missing environment data >&2 ; exit 1 ; }
 
 echo DB_PREFIX=whisk_amqp_ >>$ENV_FILE
-API_HOST=$(oc get route/openwhisk --template="{{.spec.host}}" --namespace openwhisk)
+API_HOST=$(oc get route/openwhisk --template="{{.spec.host}}" --namespace $NAMESPACE)
 [ -z "$API_HOST" ] && { echo cannot determine OpenWhisk API_HOST >&2 ; exit 1 ; }
 echo ROUTER_HOST=$API_HOST >>$ENV_FILE
 

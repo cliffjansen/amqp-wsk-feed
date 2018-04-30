@@ -44,7 +44,7 @@ function main(params) {
 
 ```
 $ wsk action create msglog msglog.js
-$ wsk trigger create trig_01 --feed amqp/amqpfd -p address queue_99 -p connection '{"host": "broker6.myorg.com", "port": 5672 }'
+$ wsk trigger create trig_01 --feed amqp/amqpfd -p address queue_99 -p connection_options '{"host": "broker6.myorg.com", "port": 5672 }'
 $ wsk rule create rule_7 trig_01 msglog
 ```
 
@@ -52,7 +52,7 @@ There will be one invocation of the msglog action for each inbound message proce
 
 In the above example the message passes from the feed => trig_01 => rule_7 => msglog in a simple pipeline fashion.  OpenWhisk allows much more complicated combinations of triggers, rules and actions which could lead to the message being processed by multiple actions in series or in parallel.
 
-The 'connection' argument can be composed of any valid connection options used buy the rhea AMQP client.
+The 'connection_options' argument can be composed of any valid connection options used buy the rhea AMQP client.
 
 Multiple Receivers to the same AMQP host will share a connection if the connection options are identical and the trigger is created from the same OpenWhisk namespace by the same OpenWhisk user.  Setting a "feed_tag" property on the rhea_options can restrict this connection sharing only to other Receivers with the same feed_tag string value.
 
