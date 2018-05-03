@@ -6,13 +6,11 @@ Each [trigger](https://github.com/openwhisk/openwhisk/blob/master/docs/triggers_
 
 ## Deployment
 
-This package has two parts: the AMQP connection feed and two associated feed action.  The former is a Node.js application that runs in a docker image.  The latter two are an OpenWhisk Action and related OpenWhisk Web Action that provide the necessary OpenWhisk API requirements for managing the connection feed in a secure manner.
+This package has two parts: the AMQP feed service and associated OpenWhisk feed actions which control the lifecycle of individual feeds.  The former is a Node.js application that can be run in a docker image.  The latter two are an OpenWhisk Action and related OpenWhisk Web Action that provide the necessary OpenWhisk API requirements for managing the connection feed in a secure manner.
 
-It should be noted that a [connection feed](https://github.com/openwhisk/openwhisk/blob/master/docs/feeds.md#implementing-feeds-via-connections) is different from other OpenWhisk feed types in that it runs continuously and is often hosted outside the OpenWhisk runtime.  The OpenWhisk documentation will often refer to a connection feed as a "provider service".  Consequently you will often find the terms "feed" and "provider" used interchangeably in this project's source code to refer to the AMQP feed provider.
+Currently, this package has only been tested within an OpenWhisk instance running on OpenShift.  In the case that you have installed OpenWhisk using https://github.com/projectodd/openwhisk-openshift, you can run a (non-scaling) version of the feed provider by executing the script: deploy/ocWhiskSystem.sh.
 
-Currently, this package has only been tested within an OpenWhisk instance running in an OpenShift.  In the case that you have installed OpenWhisk using https://github.com/projectodd/openwhisk-openshift, you can run a (non-scaling) version of the feed provider by executing the script: deploy/ocWhiskSystem.sh.
-
-With slight modification it should be able to deploy the AMQP connection feed to Kubernetes or to any arbitrary docker runtime.  Installing by hand requires obtaining the necessary OpenWhisk secrets required by the [Alarms package installer](https://github.com/apache/incubator-openwhisk-package-alarms/blob/master/installCatalog.sh) and running the commands while changing the named "alarm" references for corresponding 'amqp' named entities.
+With slight modification it should be possible to deploy the AMQP connection feed to Kubernetes or to any arbitrary docker runtime.  Installing by hand requires obtaining the necessary OpenWhisk secrets required by the [Alarms package installer](https://github.com/apache/incubator-openwhisk-package-alarms/blob/master/installCatalog.sh) and running the commands while changing the named "alarm" references for corresponding 'amqp' named entities.
 
 ### Deploy the AMQP connection feed on OpenShift
 
@@ -52,7 +50,7 @@ There will be one invocation of the msglog action for each inbound message proce
 
 In the above example the message passes from the feed => trig_01 => rule_7 => msglog in a simple pipeline fashion.  OpenWhisk allows much more complicated combinations of triggers, rules and actions which could lead to the message being processed by multiple actions in series or in parallel.
 
-The 'connection_options' argument can be composed of any valid connection options used buy the rhea AMQP client.
+The 'connection_options' argument can be composed of any valid connection options used by the rhea AMQP client.
 
 Multiple Receivers to the same AMQP host will share a connection if the connection options are identical and the trigger is created from the same OpenWhisk namespace by the same OpenWhisk user.  Setting a "feed_tag" property on the rhea_options can restrict this connection sharing only to other Receivers with the same feed_tag string value.
 
