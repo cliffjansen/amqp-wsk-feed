@@ -1,6 +1,6 @@
 {
   "name": "amqp-trigger",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "A service to trigger openwhisk triggers based on AMQP message sources",
   "main": "app.js",
   "license": "Apache-2.0",
