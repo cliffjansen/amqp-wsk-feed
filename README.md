@@ -14,7 +14,7 @@ Currently, this package has only been tested within an OpenWhisk instance runnin
 $ oc process -f deploy/openshift/amqp-template.yml | oc create -f -
 ```
 
-With slight modification it should be possible to deploy the AMQP connection feed to Kubernetes or to any arbitrary docker runtime.  Installing by hand requires obtaining the necessary OpenWhisk secrets required by the [Alarms package installer](https://github.com/apache/incubator-openwhisk-package-alarms/blob/master/installCatalog.sh) and running the commands while changing the named "alarm" references for corresponding 'amqp' named entities.
+With slight modification it should be possible to deploy the AMQP connection feed to Kubernetes or to any arbitrary docker runtime.  Installing by hand requires rounding up credentials and endpoints for the OpenWhisk controller and the CouchDB database.
 
 ### Running the AMQP connection feed in a Docker container
 
@@ -23,16 +23,16 @@ To build the feed, copy this repository to a subdirectory, e.g. "amqpprovider".
 ```
 $ docker build --tag foo/bar amqpprovider
 $ export DB_PREFIX=whisk_amqp_
-$ export ROUTER_HOST=openwhisk-myproject.192.168.42.216.nip.io
 $ export DB_USERNAME=dbname
 $ export DB_PASSWORD=secret
 $ export DB_HOST=172.30.93.156:5984
 $ export DB_PROTOCOL=http
+$ export ROUTER_HOST=openwhisk-myproject.192.168.42.216.nip.io
 $ export AUTH_WHISK_SYSTEM=some:long_string
 $ export CONTROLLER_HOST=controller
 $ export CONTROLLER_PORT=8080
 $ 
-$ docker run -e ROUTER_HOST=openwhisk-myproject.192.168.42.216.nip.io -e DB_USERNAME=the_name -e DB_HOST=172.30.93.156:5984 -e DB_PASSWORD=the_pw -e DB_PROTOCOL=http -e DB_PREFIX=whisk_amqp_ -it foo/bar node /amqpTrigger/app.js
+$ docker run -e ROUTER_HOST=$ROUTER_HOST -e DB_USERNAME=$DB_USERNAME -e DB_HOST=$DB_HOST -e DB_PASSWORD=$DB_PASSWORD -e DB_PROTOCOL=$DB_PROTOCOL -e DB_PREFIX=$DB_PREFIX -it foo/bar node /amqpTrigger/app.js
 $ amqpprovider/installCatalog.sh ${AUTH_WHISK_SYSTEM} http://${CONTROLLER_HOST}:${CONTROLLER_PORT} ${DB_PROTOCOL}://${DB_HOST} ${DB_PREFIX} ${ROUTER_HOST}
 ```
 
