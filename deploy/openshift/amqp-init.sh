@@ -2,7 +2,7 @@
 
 set -a
 if [ -e /amqpprovider_config/env ]; then
-    source /mamqpprovider_config/env
+    source /amqpprovider_config/env
 fi
 
 echo "Waiting for controller to be available"
