@@ -8,13 +8,25 @@ Each [trigger](https://github.com/openwhisk/openwhisk/blob/master/docs/triggers_
 
 This package has two parts: the AMQP feed service and associated OpenWhisk feed actions which control the lifecycle of individual feeds.  The former is a Node.js application that can be run in a docker image.  The latter two are an OpenWhisk Action and related OpenWhisk Web Action that provide the necessary OpenWhisk API requirements for managing the connection feed in a secure manner.
 
-Currently, this package has only been tested within an OpenWhisk instance running on OpenShift.  In the case that you have installed OpenWhisk using https://github.com/projectodd/openwhisk-openshift and the deployment has completed successfully, you can run a (non-scaling) version of the feed provider by executing the script: deploy/ocWhiskSystem.sh.  This will create and deploy a local docker image of the AMQP feed provider and configure the AMQP package.  Alternatively, if you wish to use pre-made images, you can deploy using the openshift template:
+This package can be easily installed as a system package within an OpenWhisk instance running on Kubernetes or OpenShift.  Pre-built Docker images can deployed as follows by the OpenWhisk administrator:
+
+On Kubernetes:
 
 ```
+$ kubectl -n openwhisk create -f deploy/kube/amqp_deployment.yml
+```
+
+On OpenShift:
+
+```
+$ oc login [OpenWhisk system account]
+$ oc project openwhisk    # substitute project name if other than "openwhisk"
 $ oc process -f deploy/openshift/amqp-template.yml | oc create -f -
 ```
 
-With slight modification it should be possible to deploy the AMQP connection feed to Kubernetes or to any arbitrary docker runtime.  Installing by hand requires rounding up credentials and endpoints for the OpenWhisk controller and the CouchDB database.
+Alternatively, you can build and deploy the AMQP feed provider Docker image and configure the AMQP package on OpenShift.  In the case that you have installed OpenWhisk using https://github.com/projectodd/openwhisk-openshift and the deployment has completed successfully, you can run a version of the feed provider by executing the script: deploy/ocWhiskSystem.sh. 
+
+TODO: build, deploy, and OpenWhisk package creation in an unprivileged account.
 
 ### Running the AMQP connection feed in a Docker container
 
@@ -57,7 +69,7 @@ function main(params) {
 
 ```
 $ wsk action create msglog msglog.js
-$ wsk trigger create trig_01 --feed amqp/amqpfd -p address queue_99 -p connection_options '{"host": "broker6.myorg.com", "port": 5672 }'
+$ wsk trigger create trig_01 --feed amqp/amqpFeed -p address queue_99 -p connection_options '{"host": "broker6.myorg.com", "port": 5672 }'
 $ wsk rule create rule_7 trig_01 msglog
 ```
 
