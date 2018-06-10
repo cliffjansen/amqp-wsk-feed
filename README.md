@@ -81,13 +81,18 @@ The 'connection_options' argument can be composed of any valid connection option
 
 Multiple Receivers to the same AMQP host will share a connection if the connection options are identical and the trigger is created from the same OpenWhisk namespace by the same OpenWhisk user.  Setting a "feed_tag" property on the connection_options can restrict this connection sharing only to other Receivers with the same feed_tag string value.
 
+### Hello World
+
+See example/helloworld/run_hello_world.sh for a simple example using an AMQP message to trigger an OpenWhisk action.  The script spins up a temporary Docker image of the Apache Artemis broker.
+
 ## Advanced usage
 
 TODO: Note low level API use to configure the feed/rules/triggers and how to avoid message loss on setup.
 
 ## Enhancements coming real soon now
 
- - easy deployment to Kubernetes/Docker
  - self test
- - provide a mechanism for request/response round-trip using the AMQP feed provider
- - add an UPDATE feed lifecycle event for dynamic credit, or maybe PAUSE/UNPAUSE
+ - provide an amqpProduce that works in similar fashion to the existing kafkaProduce.
+ - provide a mechanism for request/response round-trip using the AMQP feed provider.
+ - add an UPDATE feed lifecycle event for dynamic credit, or maybe PAUSE/UNPAUSE to ease configuration.
+ - optional delivery of the full AMQP message including all headers.

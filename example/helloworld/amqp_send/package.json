@@ -1,0 +1,10 @@
+{
+  "name": "amqp-send",
+  "version": "1.0.0",
+  "description": "A sender of AMQP string messages",
+  "main": "amqp_send.js",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "rhea": "^0.2.11"
+  }
+}

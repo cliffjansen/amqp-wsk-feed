@@ -110,7 +110,8 @@ module.exports = function(amqpContainer, logger) {
         events = ['connection_error', 'protocol_error'];
         events.forEach(event => {
             conn.on(event, (context) => {
-                this.logger.info('AmqpFeed.connect', event, context.connection.error, context.connection.feedConnectionID);
+                var errmsg = context.message || conn.get_error();
+                this.logger.info('AmqpFeed.connect', event, errmsg, conn.feedConnectionID);
             });
         });
 
